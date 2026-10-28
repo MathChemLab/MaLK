@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ebene eindeutig festlegen</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1f2330;--mut:#667;--card:#fff;--bd:#d9d9d2;--acc:#2a5bd7;--c1:#d9531e;--c2:#1b9e5a;--c3:#8a3fc4;--c4:#c2185b;--c5:#0b7285;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181f;--fg:#e8e8ee;--mut:#9aa;--card:#20232d;--bd:#3a3e4c;--acc:#7da2ff;--c1:#ff8a57;--c2:#4fd68c;--c3:#c590f2;--c4:#f06292;--c5:#3bc9db}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:14px}
+h1{font-size:1.25rem;margin:0 0 10px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:8px;padding:8px 12px}
+button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+canvas{width:100%;height:auto;aspect-ratio:1/1;touch-action:none;display:block;border-radius:8px;cursor:grab}
+.hint{color:var(--mut);font-size:.85rem;margin:6px 0 0}
+.steps{display:flex;gap:6px;margin-bottom:10px}
+.steps button{flex:1;padding:6px 4px;font-size:.9rem}
+.v{display:inline-flex;flex-direction:column;vertical-align:middle;border-left:2px solid currentColor;border-right:2px solid currentColor;border-radius:4px;padding:0 6px;margin:0 2px;line-height:1.15;text-align:center;font-size:.95rem}
+.v i{font-style:normal}
+.eq{font-size:1.05rem;padding:8px;background:var(--bg);border-radius:8px;overflow-x:auto;white-space:nowrap}
+.cu{color:var(--c1)}.cv{color:var(--c2)}.cs{color:var(--c3)}
+.k{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{border:1px solid var(--bd);padding:5px 7px;text-align:left;vertical-align:top}
+.wrap{overflow-x:auto}
+details{margin-top:12px}
+summary{cursor:pointer;font-weight:600}
+#txt p{margin:.4em 0}
+input{font:inherit;width:3.6em;padding:4px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg);text-align:center}.ok{color:var(--c2)}.bad{color:var(--c1)}.row{margin:.6em 0}.mini{font-size:.85rem;padding:4px 8px}
+</style></head><body><main>
+<h1>Wie wird eine Ebene eindeutig festgelegt?</h1>
+<div class="tabs" id="tabs"></div>
+<div class="grid">
+ <div class="card"><canvas id="cv" width="640" height="640"></canvas>
+ <p class="hint">Ziehen = drehen · Mausrad / Zwei-Finger-Zoom = zoomen · x₁ rot, x₂ grün, x₃ blau</p></div>
+ <div class="card">
+  <div class="steps" id="steps"></div>
+  <div id="txt"></div>
+ </div>
+</div>
+</main>
+<script>
+const V=a=>`<span class="v"><i>${a[0]}</i><i>${a[1]}</i><i>${a[2]}</i></span>`;
+const sub=(a,b)=>a.map((x,i)=>x-b[i]);
+const P=a=>'('+a.join(' | ')+')';
+const cases=[
+{name:'3 Punkte',pts:[['A',[1,3,1]],['B',[4,1,2]],['C',[2,2,4]]],lines:[],sup:[1,3,1],u:[3,-2,1],v:[1,-1,3],
+ given:`Gegeben: A${P([1,3,1])}, B${P([4,1,2])}, C${P([2,2,4])}`,
+ s1:`Wähle einen der Punkte als Aufpunkt, z. B. A. Aufpunkt: A = ${V([1,3,1])}`,
+ s2:`Zwei Änderungen (Richtungsvektoren): von A nach B: AB = ${V([3,-2,1])}, von A nach C: AC = ${V([1,-1,3])}. Sie sind nicht parallel.`},
+{name:'Gerade + Punkt nicht auf g',pts:[['P',[0,2,2]],['A',[1,1,0]]],lines:[['g',[1,1,0],[2,0,1]]],sup:[1,1,0],u:[2,0,1],v:[-1,1,2],
+ given:`Gegeben: g: x = ${V([1,1,0])} + t·${V([2,0,1])} und P${P([0,2,2])} ∉ g`,
+ s1:`Ein Punkt von g liegt auch in der Ebene und kann Aufpunkt sein (A${P([1,1,0])} liegt auf g).`,
+ s2:`Erster Richtungsvektor: der von g, ${V([2,0,1])}. Zweiter: die Änderung AP = ${V([-1,1,2])} vom Geradenpunkt A zu P.`},
+{name:'Zwei parallele Geraden',pts:[['A',[1,0,0]],['B',[0,2,1]]],lines:[['g',[1,0,0],[1,1,0]],['h',[0,2,1],[2,2,0]]],sup:[1,0,0],u:[1,1,0],v:[-1,2,1],
+ given:`Gegeben: g: x = ${V([1,0,0])} + t·${V([1,1,0])} und h: x = ${V([0,2,1])} + s·${V([2,2,0])}`,
+ s1:`Die Richtungsvektoren sind Vielfache voneinander (g ∥ h, nicht identisch). Aufpunkt: A = ${V([1,0,0])} von g.`,
+ s2:`Erster Richtungsvektor: ${V([1,1,0])} (von g). Zweiter: die Änderung von A nach B, AB = ${V([-1,2,1])}. Der Richtungsvektor von h bringt nichts Neues.`},
+{name:'Zwei sich schneidende Geraden',pts:[['S',[1,2,2]],['A',[1,0,0]],['B',[2,0,1]]],lines:[['g',[1,0,0],[0,1,1]],['h',[2,0,1],[-1,2,1]]],sup:[1,0,0],u:[0,1,1],v:[-1,2,1],
+ given:`Gegeben: g: x = ${V([1,0,0])} + t·${V([0,1,1])} und h: x = ${V([2,0,1])} + s·${V([-1,2,1])}, Schnittpunkt S${P([1,2,2])}. Aufpunkte: A${P([1,0,0])} von g, B${P([2,0,1])} von h`,
+ s1:`Aufpunkt: der von g, A = ${V([1,0,0])} (alternativ der Schnittpunkt S).`,
+ s2:`Die beiden Richtungsvektoren der Geraden spannen die Ebene auf: ${V([0,1,1])} und ${V([-1,2,1])} (nicht parallel).`},
+{name:'Gerade + Punkt auf g',none:'inf',pts:[['A',[1,1,0]],['P',[3,1,1]]],lines:[['g',[1,1,0],[2,0,1]]],sup:[0,0,0],u:[1,0,0],v:[0,1,0],dg:[2,0,1],
+ given:`Gegeben: g: x = ${V([1,1,0])} + t·${V([2,0,1])} und P${P([3,1,1])}`},
+{name:'Windschiefe Geraden',none:'skew',pts:[['A',[1,0,0]],['B',[0,2,1]]],lines:[['g',[1,0,0],[0,1,1]],['h',[0,2,1],[1,0,2]]],sup:[0,0,0],u:[1,0,0],v:[0,1,0],dg:[0,1,1],dh:[1,0,2],
+ given:`Gegeben: g: x = ${V([1,0,0])} + t·${V([0,1,1])} und h: x = ${V([0,2,1])} + s·${V([1,0,2])}`,
+ tryTxt:`AB = ${V([-1,2,1])} = r·${V([0,1,1])} + s·${V([1,0,2])} ergibt −1 = s, 2 = r und 1 = r + 2s. Aus den ersten beiden Gleichungen folgt r + 2s = 0, es müsste aber 1 sein: Widerspruch. B liegt nicht in dieser Ebene.`}
+];
+cases.splice(2,0,cases.splice(4,1)[0]);
+let ci=0,st=0,az=-0.9,el=0.5,S=null;
+const cv=document.getElementById('cv'),g=cv.getContext('2d');
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function pr(p){const ca=Math.cos(az),sa=Math.sin(az),ce=Math.cos(el),se=Math.sin(el);
+ const x1=p[0]*ca-p[1]*sa,y1=p[0]*sa+p[1]*ca;
+ return [cv.width/2+S*x1,cv.height/2+S*0.15*8-S*(p[2]*ce+y1*se)-cv.height*0.12];}
+const add=(a,b,k=1)=>a.map((x,i)=>x+k*b[i]);
+function line(a,b,col,w=2,dash=[]){const A=pr(a),B=pr(b);g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash);g.beginPath();g.moveTo(...A);g.lineTo(...B);g.stroke();g.setLineDash([])}
+function dot(p,lab,col){const A=pr(p);g.fillStyle=col;g.beginPath();g.arc(A[0],A[1],6,0,7);g.fill();g.fillStyle=css('--fg');g.font='bold 16px system-ui';g.fillText(lab,A[0]+9,A[1]-8)}
+function arrow(a,b,col,lab){line(a,b,col,4);const A=pr(a),B=pr(b),d=Math.atan2(B[1]-A[1],B[0]-A[0]);g.fillStyle=col;g.beginPath();g.moveTo(...B);g.lineTo(B[0]-14*Math.cos(d-.4),B[1]-14*Math.sin(d-.4));g.lineTo(B[0]-14*Math.cos(d+.4),B[1]-14*Math.sin(d+.4));g.fill();g.font='bold 17px system-ui';g.fillText(lab,(A[0]+B[0])/2+8,(A[1]+B[1])/2-8)}
+function draw(){
+ S=Math.min(cv.width,cv.height)/9*zoom;
+ g.clearRect(0,0,cv.width,cv.height);
+ const c=cases[ci],fg=css('--fg'),bd=css('--bd');
+ // Gitter in x1-x2-Ebene
+ for(let i=-4;i<=4;i++){line([i,-4,0],[i,4,0],bd,1);line([-4,i,0],[4,i,0],bd,1)}
+ [[ [4.5,0,0],'x₁','#d33' ],[ [0,4.5,0],'x₂','#2a9d4a' ],[ [0,0,4.5],'x₃','#2a5bd7' ]].forEach(([e,l,col])=>{line([0,0,0],e,col,2);const A=pr(e);g.fillStyle=col;g.font='15px system-ui';g.fillText(l,A[0]+5,A[1])});
+ // Ebene
+ if(st>=3){const o=c.sup,r=[-0.6,1.6];
+  const q=[[r[0],r[0]],[r[1],r[0]],[r[1],r[1]],[r[0],r[1]]].map(([a,b])=>pr(add(add(o,c.u,a),c.v,b)));
+  g.fillStyle='rgba(42,91,215,.22)';g.strokeStyle=css('--acc');g.lineWidth=2;g.beginPath();q.forEach((p,i)=>i?g.lineTo(...p):g.moveTo(...p));g.closePath();g.fill();g.stroke();
+  for(let k=0;k<=4;k++){const t=r[0]+(r[1]-r[0])*k/4;
+   g.strokeStyle='rgba(42,91,215,.35)';g.lineWidth=1;
+   let a=pr(add(add(o,c.u,t),c.v,r[0])),b=pr(add(add(o,c.u,t),c.v,r[1]));g.beginPath();g.moveTo(...a);g.lineTo(...b);g.stroke();
+   a=pr(add(add(o,c.u,r[0]),c.v,t));b=pr(add(add(o,c.u,r[1]),c.v,t));g.beginPath();g.moveTo(...a);g.lineTo(...b);g.stroke();}}
+ // Geraden
+ c.lines.forEach(([n,p,d],i)=>{const col=i?css('--c5'):css('--c4');line(add(p,d,-1.2),add(p,d,2.2),col,3);const A=pr(add(p,d,2.2));g.fillStyle=col;g.font='bold 17px system-ui';g.fillText(n,A[0]+6,A[1])});
+ c.pts.forEach(([n,p])=>dot(p,n,fg));
+ if(st>=1){dot(c.sup,'Aufpunkt',css('--c3'))}
+ if(st>=2){arrow(c.sup,add(c.sup,c.u),css('--c1'),'u');arrow(c.sup,add(c.sup,c.v),css('--c2'),'v')}
+}
+let zoom=1;
+function panel(){
+ const c=cases[ci],t=document.getElementById('txt');
+ let h=`<p>${c.given}</p>`;
+ if(st==0)h+=`<p><b>Überlege:</b> Was brauchst du für <i>x = A + r·u + s·v</i>? Wähle selbst einen Aufpunkt und zwei Richtungsvektoren, bevor du weiterklickst.</p>`;
+ if(st>=1)h+=`<p><span class="k" style="background:var(--c3)"></span><b>Aufpunkt.</b> ${c.s1}</p>`;
+ if(st>=2)h+=`<p><span class="k" style="background:var(--c1)"></span><span class="k" style="background:var(--c2)"></span><b>Richtungsvektoren.</b> ${c.s2}</p>`;
+ if(st>=3)h+=`<div class="eq">E: x = <span class="cs">${V(c.sup)}</span> + r·<span class="cu">${V(c.u)}</span> + s·<span class="cv">${V(c.v)}</span></div><p><b>Merke:</b> Immer ein Aufpunkt (Zustand) und zwei nicht parallele Richtungsvektoren (Änderungen). Zustand + Änderung = Zustand: So erreichst du jeden Punkt der Ebene. Eine Ebene hat unendlich viele richtige Parametergleichungen.</p>`;
+ t.innerHTML=h;
+ document.querySelectorAll('#steps button').forEach((b,i)=>b.className=i==st?'on':'');
+ draw();
+}
+const tabs=document.getElementById('tabs');
+cases.forEach((c,i)=>{const b=document.createElement('button');b.textContent=c.name;b.onclick=()=>{ci=i;st=0;[...tabs.children].forEach((x,j)=>x.className=j==i?'on':'');panel()};tabs.appendChild(b)});
+tabs.children[0].className='on';
+['Gegeben','1 Aufpunkt','2 Richtungen','3 Gleichung'].forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>{st=i;panel()};document.getElementById('steps').appendChild(b)});
+let drag=null;const pts=new Map();let pd=0;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];if(pts.size==2)pd=dist()});
+const dist=()=>{const a=[...pts.values()];return Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1])};
+cv.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;
+ if(pts.size==2){pts.set(e.pointerId,[e.clientX,e.clientY]);const d=dist();zoom=Math.min(2.5,Math.max(.5,zoom*d/pd));pd=d;draw();return}
+ az+=(e.clientX-drag[0])*.01;el=Math.min(1.45,Math.max(-.2,el+(e.clientY-drag[1])*.01));drag=[e.clientX,e.clientY];pts.set(e.pointerId,drag);draw()});
+['pointerup','pointercancel'].forEach(n=>cv.addEventListener(n,e=>pts.delete(e.pointerId)));
+cv.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.min(2.5,Math.max(.5,zoom*(e.deltaY<0?1.1:.9)));draw()},{passive:false});
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',draw);
+const blank=()=>({sup:['','',''],u:['','',''],v:['','','']});
+let ans=blank(),lastCase=0,pickMode=false,pk=[],ang=40,showTry=false,guess=-1;
+const hints=[['Jeder der drei Punkte liegt in der Ebene.','Eine Änderung von einem gegebenen Punkt zu einem anderen bleibt in der Ebene.'],['Jeder Punkt auf g liegt in der Ebene.','Eine Richtung kennst du aus g. Für die zweite hilft die Änderung von einem Punkt auf g nach P.'],['Jeder Punkt auf g (oder h) liegt in der Ebene.','g und h sind parallel, ihre Richtungsvektoren liefern also nur eine Richtung. Hilf dir mit der Änderung von einem Punkt auf g zu einem Punkt auf h.'],['Der Schnittpunkt S und jeder Punkt auf g oder h liegt in der Ebene.','Beide Geraden verlaufen in der Ebene. Welche Änderungen beschreiben ihre Richtungen?']];
+hints.splice(2,0,[]);
+const num=s=>{s=String(s).trim().replace(',','.');if(!s)return NaN;if(s.includes('/')){const[a,b]=s.split('/');return b.trim()===''?NaN:parseFloat(a)/parseFloat(b)}return Number(s)};
+const vo=k=>ans[k].map(num),fin=a=>a.every(isFinite),f2=x=>Math.round(x*100)/100;
+const cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const dt=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const z0=a=>a.every(x=>Math.abs(x)<1e-9);
+function chk(){const c=cases[ci],n=cr(c.u,c.v),s=vo('sup'),u=vo('u'),v=vo('v');
+ const d=w=>!fin(w)?-1:z0(w)?2:Math.abs(dt(n,w))<1e-9?1:0;
+ return{sup:fin(s)?(Math.abs(dt(n,sub(s,c.sup)))<1e-9?1:0):-1,u:d(u),v:d(v),par:fin(u)&&fin(v)&&z0(cr(u,v))}}
+const allOk=()=>{const r=chk();return r.sup==1&&r.u==1&&r.v==1&&!r.par};
+const msg=(r,w)=>r==1?`<span class='ok'>✓ passt</span>`:r==0?`<span class='bad'>✗ ${w}</span>`:r==2?`<span class='bad'>✗ Der Nullvektor legt keine Richtung fest.</span>`:'';
+const inp=k=>`<span class='v' style='padding:3px 5px'>${[0,1,2].map(i=>`<input data-k='${k}' data-i='${i}' value='${ans[k][i]}' inputmode='decimal' autocomplete='off'>`).join('')}</span>`;
+function fb(){pickUI();const r=chk(),q=id=>document.getElementById(id);
+ if(q('lab-sup'))q('lab-sup').textContent=lab();
+ if(q('f-sup'))q('f-sup').innerHTML=msg(r.sup,'Dieser Punkt liegt nicht in der Ebene.');
+ if(q('f-u'))q('f-u').innerHTML=msg(r.u,'Diese Änderung führt aus der Ebene heraus.');
+ if(q('f-v'))q('f-v').innerHTML=msg(r.v,'Diese Änderung führt aus der Ebene heraus.');
+ if(q('f-p'))q('f-p').innerHTML=(r.u==1&&r.v==1)?(r.par?`<span class='bad'>✗ u und v sind parallel und spannen nur eine Gerade auf.</span>`:`<span class='ok'>✓ u und v sind nicht parallel und spannen die Ebene auf.</span>`):'';
+ const nx=q('f-next');if(nx)nx.style.display=(nx.dataset.need=='sup'?r.sup==1:allOk())?'':'none';
+ draw()}
+function fill(k){const c=cases[ci];if(k=='sup')ans.sup=c.sup.map(String);else{ans.u=c.u.map(String);ans.v=c.v.map(String)}panel()}
+function panel(){
+ if(lastCase!==ci){ans=blank();lastCase=ci;pk=[];pickMode=false;guess=-1;showTry=false;ang=40}
+ if(st!=2)pickMode=false;
+ const c=cases[ci],t=document.getElementById('txt');let o=`<p>${c.given}</p>`;
+ if(st==0)o+=`<p>Eine Ebene wird beschrieben durch <i>x = A + r·u + s·v</i>. Finde selbst einen <b>Aufpunkt</b> A und zwei <b>Richtungsvektoren</b> u und v, die zu den gegebenen Objekten passen. Die App prüft deine Eingaben.</p><button data-go='1'>Los geht’s</button>`;
+ if(st==1){o+=`<p><b>Aufpunkt (Zustand):</b> Wähle einen Punkt, der in der Ebene liegt. Tippe die Koordinaten ein oder klicke einen Punkt im Bild an.</p>`;
+  if(c.pts.length)o+=`<div class='row'>Gegebenen Punkt übernehmen: ${c.pts.map(([n],i)=>`<button class='mini' data-pick='${i}'>${n}</button>`).join(' ')}</div>`;
+  o+=`<div class='row'><span class='cs' id='lab-sup'>${lab()}</span> ${inp('sup')} <span id='f-sup'></span></div><button class='mini' data-tip='0'>Tipp</button> <button class='mini' data-fill='sup'>Beispiellösung</button> <button id='f-next' data-need='sup' data-go='2' style='display:none'>Weiter zu den Richtungen</button><p id='tp'></p>`}
+ if(st==2){if(!fin(vo('sup')))o+=`<p class='bad'>Wähle zuerst einen Aufpunkt (Schritt 1).</p>`;else o+=`<p><b>Richtungsvektoren (Änderungen):</b> Welche Änderungen führen von ${an()} aus innerhalb der Ebene?</p><div class='row'><button class='mini${pickMode?' on':''}' data-mode='1'>Zwei Punkte anklicken</button> <span id='pv'></span></div>${c.lines.map(([n,p,d],i)=>`<div class='row'><span style='color:var(--c${i?5:4})'>Richtungsvektor von ${n}: ${V(d)}</span> <button class='mini' data-dir='${n}' data-as='u'>als u</button> <button class='mini' data-dir='${n}' data-as='v'>als v</button></div>`).join('')}<div class='row'><span class='cu'>u =</span> ${inp('u')} <span id='f-u'></span></div><div class='row'><span class='cv'>v =</span> ${inp('v')} <span id='f-v'></span></div><p id='f-p'></p><button class='mini' data-tip='1'>Tipp</button> <button class='mini' data-fill='uv'>Beispiellösung</button> <button id='f-next' data-need='all' data-go='3' style='display:none'>Weiter zur Gleichung</button><p id='tp'></p>`}
+ if(st==3){if(allOk())o+=`<div class='eq'>E: x = <span class='cs'>${V(vo('sup').map(f2))}</span> + r·<span class='cu'>${V(vo('u').map(f2))}</span> + s·<span class='cv'>${V(vo('v').map(f2))}</span></div><button class='mini' data-go='1' data-reset='1'>Andere Gleichung finden</button>`;else o+=`<p class='bad'>Für die Gleichung brauchst du einen gültigen Aufpunkt und zwei nicht parallele Richtungsvektoren (Schritte 1 und 2).</p>`}
+ if(c.none)o=noneHTML(c);t.innerHTML=o;document.querySelectorAll('#steps button').forEach((b,i)=>{b.className=i==st?'on':'';b.textContent=(c.none?NL:RL)[i]});fb()}
+function draw(){
+ S=Math.min(cv.width,cv.height)/9*zoom;g.clearRect(0,0,cv.width,cv.height);
+ const c=cases[ci],fg=css('--fg'),bd=css('--bd'),mut=css('--mut'),r=chk(),s=vo('sup'),u=vo('u'),w=vo('v');
+ for(let i=-4;i<=4;i++){line([i,-4,0],[i,4,0],bd,1);line([-4,i,0],[4,i,0],bd,1)}
+ [[[4.5,0,0],'x₁','#d33'],[[0,4.5,0],'x₂','#2a9d4a'],[[0,0,4.5],'x₃','#2a5bd7']].forEach(([e,l,col])=>{line([0,0,0],e,col,2);const A=pr(e);g.fillStyle=col;g.font='15px system-ui';g.fillText(l,A[0]+5,A[1])});
+ if(st>=3&&allOk()){const B=bnds(s,u,w);patch(s,u,w,B[0],B[1],'rgba(42,91,215,.22)',css('--acc'))}
+ c.lines.forEach(([n,p,d],i)=>{const col=i?css('--c5'):css('--c4');line(add(p,d,-1.2),add(p,d,2.2),col,3);const A=pr(add(p,d,2.2));g.fillStyle=col;g.font='bold 17px system-ui';g.fillText(n,A[0]+6,A[1])});
+ c.pts.forEach(([n,p])=>dot(p,n,fg));
+ if(st>=1&&fin(s))dot(s,an(),r.sup==1?css('--c3'):mut);
+ if(st>=2&&fin(s)){if(fin(u)&&!z0(u))arrow(s,add(s,u),r.u==1?css('--c1'):mut,'u');if(fin(w)&&!z0(w))arrow(s,add(s,w),r.v==1?css('--c2'):mut,'v')}
+ if(pickMode||(st==1&&!c.none))pickDraw();if(c.none)noneDraw(c)}
+const eq3=(a,b)=>a.every((v,i)=>v==b[i]);
+const an=()=>{const s=vo('sup'),c=cases[ci];if(fin(s)){const m=c.pts.find(([n,p])=>eq3(p,s));if(m)return m[0]}return ['P','Q','R','T','U','X'].find(n=>!c.pts.some(([m])=>m==n))};
+const lab=()=>ans.sup.every(x=>String(x).trim()==='')?'':an()+' =';
+function cands(){const c=cases[ci],L=[],a1=(n,p)=>{if(!L.some(x=>eq3(x.p,p)))L.push({n,p})};
+ c.pts.forEach(([n,p])=>a1(n,p));
+ c.lines.forEach(([n,p,d])=>[0,1,2].forEach(t=>a1(n+'₀₁₂'[t],add(p,d,t))));
+ const s=vo('sup');if(fin(s))a1(an(),s);return L}
+function pickUI(){const e=document.getElementById('pv');if(!e)return;
+ if(!pickMode)e.innerHTML='';
+ else if(pk.length==0)e.innerHTML='Klicke im Bild den <b>Anfangspunkt</b> an.';
+ else if(pk.length==1)e.innerHTML=`Anfang: ${pk[0].n}. Klicke den <b>Endpunkt</b> an.`;
+ else e.innerHTML=`<br>Änderung von ${pk[0].n} nach ${pk[1].n}: ${V(sub(pk[1].p,pk[0].p))}<br><button class='mini' data-adopt='u'>als u übernehmen</button> <button class='mini' data-adopt='v'>als v übernehmen</button> <button class='mini' data-again='1'>neu wählen</button>`}
+function pickDraw(){const a=css('--acc'),c=cases[ci];
+ cands().forEach(({n,p})=>{const A=pr(p),sel=pk.some(x=>eq3(x.p,p));g.strokeStyle=a;g.lineWidth=2;g.beginPath();g.arc(A[0],A[1],10,0,7);g.stroke();
+  if(sel){g.fillStyle=a;g.globalAlpha=.35;g.fill();g.globalAlpha=1}
+  if(!c.pts.some(([m])=>m==n)){g.fillStyle=a;g.font='14px system-ui';g.fillText(n,A[0]+12,A[1]+16)}});
+ if(pk.length==2)arrow(pk[0].p,pk[1].p,a,'')}
+let sx0=0,sy0=0;
+cv.addEventListener('pointerdown',e=>{sx0=e.clientX;sy0=e.clientY});
+cv.addEventListener('click',e=>{const sel1=st==1&&!cases[ci].none;if(!(pickMode||sel1)||Math.hypot(e.clientX-sx0,e.clientY-sy0)>6)return;
+ if(pk.length==2)pk=[];
+ const R=cv.getBoundingClientRect(),X=(e.clientX-R.left)*cv.width/R.width,Y=(e.clientY-R.top)*cv.height/R.height;
+ let best=null,bd=28;cands().forEach(k=>{const A=pr(k.p),d=Math.hypot(A[0]-X,A[1]-Y);if(d<bd){bd=d;best=k}});
+ if(sel1&&!pickMode){if(best){ans.sup=best.p.map(String);panel()}return}
+ if(best&&!(pk.length==1&&eq3(pk[0].p,best.p)))pk.push(best);
+ pickUI();draw()});
+const NL=['Gegeben','Vermutung','Prüfen','Ergebnis'],RL=['Gegeben','1 Aufpunkt','2 Richtungen','3 Gleichung'];
+function noneHTML(c){const inf=c.none=='inf';let o=`<p>${c.given}</p>`;
+ if(st==0)o+=`<p>Kann man mit diesen Angaben eine Ebene eindeutig festlegen? Überlege zuerst selbst.</p><button data-go='1'>Weiter</button>`;
+ if(st==1){o+=`<p><b>Deine Vermutung:</b></p><div class='row'>${['Genau eine Ebene','Keine Ebene','Unendlich viele Ebenen'].map((n,i)=>`<button class='mini${guess==i?' on':''}' data-guess='${i}'>${n}</button>`).join(' ')}</div>`;
+  if(guess>=0)o+=guess==(inf?2:1)?`<p class='ok'>✓ Das passt. Prüfe es im nächsten Schritt nach.</p>`:`<p class='bad'>✗ Probiere es im Schritt „Prüfen“ aus und vergleiche dann noch einmal.</p>`;
+  o+=`<button data-go='2'>Weiter zum Prüfen</button>`}
+ if(st==2){if(inf)o+=`<p>Eine Ebene durch g braucht neben der Richtung von g, u = ${V(c.dg)}, einen zweiten Richtungsvektor, der nicht parallel zu u ist. Die Änderung von A nach P ist AP = ${V(sub(c.pts[1][1],c.pts[0][1]))}.</p><p>Drehe eine Ebene, die g enthält:</p><input type='range' id='ang' min='0' max='180' value='${ang}' style='width:100%'><p>Alle diese Ebenen enthalten g <b>und</b> P. Was fällt dir an AP und u auf?</p><button data-go='3'>Weiter</button>`;
+  else o+=`<p>Die Richtungsvektoren ${V(c.dg)} und ${V(c.dh)} sind nicht parallel. Setze g = h und versuche, das Gleichungssystem zu lösen. Oder teste: Spannen der Aufpunkt A von g, die Richtung von g und die Richtung von h eine Ebene auf, in der auch B liegt?</p><button class='mini${showTry?' on':''}' data-try='1'>Versuch zeichnen</button>${showTry?`<p>${c.tryTxt}</p>`:''}<br><button data-go='3'>Weiter</button>`}
+ if(st==3)o+=inf?`<p><b>Ergebnis:</b> Liegt P auf g, ist AP ein Vielfaches von u. Es gibt dann keinen zweiten, unabhängigen Richtungsvektor, also unendlich viele Ebenen durch g und P. Eine eindeutige Ebene entsteht nur, wenn P <i>nicht</i> auf g liegt.</p>`:`<p><b>Ergebnis:</b> Windschiefe Geraden schneiden sich nicht und sind nicht parallel. Keine Ebene enthält beide Geraden. Zwei Geraden legen nur dann eine Ebene fest, wenn sie sich schneiden oder parallel und verschieden sind.</p>`;
+ return o}
+function patch(o,u,v,ra,rb,fc,sc){const Q=[[ra[0],rb[0]],[ra[1],rb[0]],[ra[1],rb[1]],[ra[0],rb[1]]].map(([a,b])=>pr(add(add(o,u,a),v,b)));
+ g.fillStyle=fc;g.strokeStyle=sc;g.lineWidth=2;g.beginPath();Q.forEach((p,i)=>i?g.lineTo(...p):g.moveTo(...p));g.closePath();g.fill();g.stroke();
+ for(let k=1;k<4;k++){const m=ra[0]+(ra[1]-ra[0])*k/4,n2=rb[0]+(rb[1]-rb[0])*k/4;g.strokeStyle='rgba(42,91,215,.3)';g.lineWidth=1;
+  [[add(add(o,u,m),v,rb[0]),add(add(o,u,m),v,rb[1])],[add(add(o,u,ra[0]),v,n2),add(add(o,u,ra[1]),v,n2)]].forEach(([a,b])=>{const A=pr(a),B=pr(b);g.beginPath();g.moveTo(...A);g.lineTo(...B);g.stroke()})}}
+function bnds(s,u,w){const c=cases[ci],X=[];c.pts.forEach(([n,p])=>X.push(p));c.lines.forEach(([n,p,d])=>{X.push(add(p,d,-1.2));X.push(add(p,d,2.2))});
+ const uu=dt(u,u),uw=dt(u,w),ww=dt(w,w),D=uu*ww-uw*uw;let a0=0,a1=1,b0=0,b1=1;
+ X.forEach(x=>{const d=sub(x,s),r1=dt(d,u),r2=dt(d,w),a=(r1*ww-r2*uw)/D,b=(uu*r2-uw*r1)/D;a0=Math.min(a0,a);a1=Math.max(a1,a);b0=Math.min(b0,b);b1=Math.max(b1,b)});
+ return[[a0-.3,a1+.3],[b0-.3,b1+.3]]}
+function noneDraw(c){const A=c.pts[0][1];
+ if(c.none=='inf'&&st>=2){const u=c.dg;let e1=cr(u,[0,0,1]);if(z0(e1))e1=cr(u,[0,1,0]);const e2=cr(u,e1),nm=a=>{const l=Math.hypot(...a);return a.map(x=>1.6*x/l)};
+  (st==2?[ang]:[0,60,120]).forEach((a,i)=>{const t=a*Math.PI/180,w=add(nm(e1).map(x=>x*Math.cos(t)),nm(e2),Math.sin(t));
+   patch(A,u,w,[-1.4,2.4],[-1,1],['rgba(42,91,215,.2)','rgba(217,83,30,.2)','rgba(27,158,90,.2)'][i%3],css('--acc'))})}
+ if(c.none=='skew'&&st>=2&&showTry)patch(A,c.dg,c.dh,[-1.4,2.4],[-0.6,1.6],'rgba(42,91,215,.2)',css('--acc'))}
+const T=document.getElementById('txt');
+T.addEventListener('input',e=>{const d=e.target.dataset;if(d.k){ans[d.k][+d.i]=e.target.value;fb()}else if(e.target.id=='ang'){ang=+e.target.value;draw()}});
+T.addEventListener('click',e=>{const d=e.target.dataset;
+ if(d.pick!==undefined){ans.sup=cases[ci].pts[+d.pick][1].map(String);panel()}
+ else if(d.fill){fill(d.fill)}
+ else if(d.guess!==undefined){guess=+d.guess;panel()}
+ else if(d.try){showTry=!showTry;panel()}
+ else if(d.dir){const L=cases[ci].lines.find(x=>x[0]==d.dir);ans[d.as]=L[2].map(String);panel()}
+ else if(d.mode){pickMode=!pickMode;pk=[];panel()}
+ else if(d.again){pk=[];pickUI();draw()}
+ else if(d.adopt){ans[d.adopt]=sub(pk[1].p,pk[0].p).map(String);pk=[];pickMode=false;panel()}
+ else if(d.tip){const p=document.getElementById('tp');if(p)p.textContent='Tipp: '+hints[ci][+d.tip]}
+ else if(d.go){if(d.reset)ans=blank();st=+d.go;panel()}});
+panel();
+</script></body></html>
